@@ -11,6 +11,7 @@ class IoContext(Thread):
         super().__init__()
         self.tickables = set()
         GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
         self.start()
         self.running = True
 
