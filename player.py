@@ -19,8 +19,9 @@ class Player(object):
     HOST = 'localhost'
     PORT = '6600'
 
-    def __init__(self, led):
-        self.led = led
+    def __init__(self, green, red):
+        self.green = green
+        self.red = red
         self.connect()
 
     def connect(self):
@@ -33,6 +34,7 @@ class Player(object):
                 connected = True
             except (ConnectionError, ConnectionRefusedError):
                 print("Could not connect to MPD. Retrying ...")
+                self.red.flash(.2, 1)
                 sleep(.5)
 
     @property
@@ -50,15 +52,15 @@ class Player(object):
         while self.state is not self.PLAY:
             self.mpdClient.play()
             sleep(.1)
-        self.led.on()
+        self.green.on()
 
     def pause(self):
         self.mpdClient.pause()
-        self.led.off()
+        self.green.off()
 
     def track_back(self):
         self.mpdClient.previous()
-        self.led.flash(.2, 3,
+        self.green.flash(.2, 3,
                        turnOn=True if self.state is self.PLAY else False)
 
 
@@ -101,7 +103,7 @@ def main():
     green = Led(22)
     red = Led(23)
 
-    player = Player(green)
+    player = Player(green, red)
     buttonListener = ButtonListener(player)
 
     button = Button(io, 24)
@@ -112,7 +114,6 @@ def main():
 
     try:
         while shutdown is False:
-            red.flash(.2, 3)
             sleep(.2)
     except KeyboardInterrupt:
         pass
