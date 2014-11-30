@@ -11,6 +11,7 @@ class IOContext(Thread):
         super().__init__()
         self.tickables = set()
         GPIO.setmode(GPIO.BCM)
+        self.daemon = True
         self.start()
 
     def run(self):
@@ -65,3 +66,30 @@ class Listener(object):
 
     def hold(self, diff, value):
         assert 0, "hold() not implemented"
+
+
+class Led(object):
+
+    def __init__(self, pin):
+        super().__init__()
+        self.pin = pin
+        self.thread = None
+        GPIO.setup(self.pin, GPIO.OUT)
+
+    def __del__(self):
+        GPIO.cleanup(self.pin)
+
+    def flash(self, period, count):
+        if self.thread is None:
+            self.period = period
+            self.count = count
+            self.thread = Thread(target=self.run)
+            self.thread.start()
+
+    def run(self):
+        for x in range(0, self.count):
+                GPIO.output(self.pin, GPIO.LOW)
+                sleep(self.period)
+                GPIO.output(self.pin, GPIO.HIGH)
+                sleep(self.period)
+        self.thread = None

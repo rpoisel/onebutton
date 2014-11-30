@@ -1,6 +1,7 @@
 #!env python3
 
-from hl_io import Button, Listener
+from hl_io import Button, Listener, Led
+from time import sleep
 
 
 class Player(Listener):
@@ -34,6 +35,16 @@ class Player(Listener):
 def main():
     b = Button(24)
     b.addButtonListener(Player())
+    green = Led(22)
+    red = Led(23)
+
+    try:
+        while True:
+            green.flash(.1, 5)
+            red.flash(.2, 3)
+            sleep(.1)
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
