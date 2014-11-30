@@ -4,30 +4,33 @@ from time import sleep
 from threading import Thread
 
 
-class IOContext(Thread):
+class IoContext(Thread):
     TICK_PERIOD = .1
 
     def __init__(self):
         super().__init__()
         self.tickables = set()
         GPIO.setmode(GPIO.BCM)
-        self.daemon = True
         self.start()
+        self.running = True
 
     def run(self):
         while True:
             for tickable in self.tickables:
                 tickable.tick()
             sleep(self.TICK_PERIOD)
+            if not self.running:
+                break
 
     def register(self, tickable):
         self.tickables.add(tickable)
 
-io = IOContext()
+    def cleanup(self):
+        self.running = False
 
 
 class Button(object):
-    def __init__(self, pin):
+    def __init__(self, ctx, pin):
         super().__init__()
         self.pin = pin
         GPIO.setup(self.pin, GPIO.IN)
@@ -35,7 +38,7 @@ class Button(object):
         self.oldState = bool(GPIO.input(self.pin))
         self.lastChange = datetime.now()
 
-        io.register(self)
+        ctx.register(self)
 
     def addButtonListener(self, listener):
         self.listeners.add(listener)
@@ -85,6 +88,12 @@ class Led(object):
             self.count = count
             self.thread = Thread(target=self.run)
             self.thread.start()
+
+    def on(self):
+        GPIO.output(self.pin, GPIO.LOW)
+
+    def off(self):
+        GPIO.output(self.pin, GPIO.HIGH)
 
     def run(self):
         for x in range(0, self.count):

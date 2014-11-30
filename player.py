@@ -1,6 +1,6 @@
 #!env python3
 
-from hl_io import Button, Listener, Led
+from hl_io import IoContext, Button, Listener, Led
 from time import sleep
 
 
@@ -10,8 +10,9 @@ class Player(Listener):
 
     HOLD_PERIOD = 2  # seconds
 
-    def __init__(self):
+    def __init__(self, led):
         super().__init__()
+        self.led = led
         self.state = self.PLAY
         self.reset = True
 
@@ -20,31 +21,46 @@ class Player(Listener):
 
     def f_trig(self, diff):
         if diff < self.HOLD_PERIOD:
-            self.state = self.PLAY if self.state is self.PAUSE else self.PAUSE
             if self.state is self.PLAY:
-                print("PLAY")
+                self.pause()
             else:
-                print("PAUSE")
+                self.play()
 
     def hold(self, diff, value):
         if value is True and diff >= self.HOLD_PERIOD and self.reset is True:
             self.reset = False
             print("TRACK BACK")
 
+    def play(self):
+        self.state = self.PLAY
+        print("PLAY")
+        self.led.on()
+
+    def pause(self):
+        self.state = self.PAUSE
+        print("PAUSE")
+        self.led.off()
+
 
 def main():
-    b = Button(24)
-    b.addButtonListener(Player())
+    io = IoContext()
+
     green = Led(22)
     red = Led(23)
 
+    player = Player(green)
+    player.play()
+
+    b = Button(io, 24)
+    b.addButtonListener(player)
+
     try:
         while True:
-            green.flash(.1, 5)
             red.flash(.2, 3)
             sleep(.1)
     except KeyboardInterrupt:
-        pass
+        player.pause()
+        io.cleanup()
 
 
 if __name__ == "__main__":
