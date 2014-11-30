@@ -8,7 +8,7 @@ from socket import error as SocketError
 
 
 class Player(object):
-    UNKNWON = 0  # state
+    UNKNOWN = 0  # state
     PAUSE = 1  # state
     PLAY = 2  # state
 
@@ -24,9 +24,12 @@ class Player(object):
 
     @property
     def state(self):
-        if self.mpdClient.status()["state"] == "pause":
+        state = self.mpdClient.status()["state"]
+        if state == "pause":
             return self.PAUSE
-        return self.PLAY  # "play"
+        elif state == "play":
+            return self.PLAY
+        return self.UNKNOWN
 
     def play(self):
         self.mpdClient.play()
