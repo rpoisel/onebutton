@@ -49,17 +49,33 @@ class Button(object):
         if self.oldState is not curState:
             self.lastChange = datetime.now()
             for listener in self.listeners:
-                if curState is True:
+                if not listener.enabled:
+                    continue
+                if curState:
                     listener.r_trig(diff)
                 else:
                     listener.f_trig(diff)
         else:
             for listener in self.listeners:
+                if not listener.enabled:
+                    continue
                 listener.hold(diff, curState)
         self.oldState = curState
 
 
 class Listener(object):
+
+    def __init__(self):
+        super().__init__()
+        self.enabled = True
+
+    @property
+    def enabled(self):
+        return self.__enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self.__enabled = enabled
 
     def r_trig(self, diff):
         assert 0, "r_trig() not implemented"
@@ -82,10 +98,11 @@ class Led(object):
     def __del__(self):
         GPIO.cleanup(self.pin)
 
-    def flash(self, period, count):
+    def flash(self, period, count, turnOn=False):
         if self.thread is None:
             self.period = period
             self.count = count
+            self.turnOn = turnOn
             self.thread = Thread(target=self.run)
             self.thread.start()
 
@@ -101,4 +118,6 @@ class Led(object):
                 sleep(self.period)
                 GPIO.output(self.pin, GPIO.HIGH)
                 sleep(self.period)
+        if self.turnOn:
+            GPIO.output(self.pin, GPIO.LOW)
         self.thread = None

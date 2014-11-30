@@ -1,19 +1,54 @@
 #!env python3
 
+import sys
 from hl_io import IoContext, Button, Listener, Led
 from time import sleep
+from mpd import MPDClient
+from socket import error as SocketError
 
 
-class Player(Listener):
+class Player(object):
+    UNKNWON = 0  # state
     PAUSE = 1  # state
     PLAY = 2  # state
 
-    HOLD_PERIOD = 2  # seconds
+    HOST = 'localhost'
+    PORT = '6600'
 
     def __init__(self, led):
-        super().__init__()
         self.led = led
-        self.state = self.PLAY
+
+        self.mpdClient = MPDClient()
+        self.mpdClient.connect(
+            host=self.HOST, port=self.PORT)
+
+    @property
+    def state(self):
+        if self.mpdClient.status()["state"] == "pause":
+            return self.PAUSE
+        return self.PLAY  # "play"
+
+    def play(self):
+        self.mpdClient.play()
+        self.led.on()
+
+    def pause(self):
+        self.mpdClient.pause()
+        self.led.off()
+
+    def track_back(self):
+        self.mpdClient.previous()
+        self.led.flash(.2, 3,
+                       turnOn=True if self.state is self.PLAY else False)
+
+
+class ButtonListener(Listener):
+
+    HOLD_PERIOD = 2  # seconds
+
+    def __init__(self, player):
+        super().__init__()
+        self.player = player
         self.reset = True
 
     def r_trig(self, diff):
@@ -21,25 +56,17 @@ class Player(Listener):
 
     def f_trig(self, diff):
         if diff < self.HOLD_PERIOD:
-            if self.state is self.PLAY:
-                self.pause()
+            if self.player.state is Player.PLAY:
+                self.player.pause()
             else:
-                self.play()
+                self.player.play()
 
     def hold(self, diff, value):
-        if value is True and diff >= self.HOLD_PERIOD and self.reset is True:
+        if value is True and \
+                diff >= self.HOLD_PERIOD and \
+                self.reset is True:
             self.reset = False
-            print("TRACK BACK")
-
-    def play(self):
-        self.state = self.PLAY
-        print("PLAY")
-        self.led.on()
-
-    def pause(self):
-        self.state = self.PAUSE
-        print("PAUSE")
-        self.led.off()
+            self.player.track_back()
 
 
 def main():
@@ -48,16 +75,22 @@ def main():
     green = Led(22)
     red = Led(23)
 
-    player = Player(green)
+    try:
+        player = Player(green)
+    except SocketError as exc:
+        io.cleanup()
+        print("Could not connect to MPD: " + str(exc))
+        sys.exit(1)
+    buttonListener = ButtonListener(player)
     player.play()
 
-    b = Button(io, 24)
-    b.addButtonListener(player)
+    button = Button(io, 24)
+    button.addButtonListener(buttonListener)
 
     try:
         while True:
             red.flash(.2, 3)
-            sleep(.1)
+            sleep(.2)
     except KeyboardInterrupt:
         player.pause()
         io.cleanup()
