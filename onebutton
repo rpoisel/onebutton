@@ -50,7 +50,7 @@ case "$1" in
 	#   1 if daemon was already stopped
 	#   2 if daemon could not be stopped
 	#   other if a failure occurred
-	start-stop-daemon --stop --quiet --retry=TERM/3/KILL/1 --pidfile $PIDFILE
+	start-stop-daemon --stop --signal TERM --quiet --pidfile $PIDFILE
 	RETVAL="$?"
 	[ "$RETVAL" = 2 ] && return 2
 	# Wait for children to finish too if this is a daemon that forks
@@ -59,7 +59,7 @@ case "$1" in
 	# that waits for the process to drop all resources that could be
 	# needed by services started subsequently.  A last resort is to
 	# sleep for some time.
-	start-stop-daemon --stop --quiet --oknodo --retry=0/3/KILL/1 --exec $DAEMON
+	start-stop-daemon --stop --signal TERM --quiet --oknodo --exec $DAEMON
 	[ "$?" = 2 ] && return 2
 	# Many daemons don't delete their pidfiles when they exit.
 	rm -f $PIDFILE
