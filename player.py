@@ -3,7 +3,6 @@
 import sys
 import signal
 from time import sleep
-from socket import error as SocketError
 
 from mpd import MPDClient, ConnectionError
 
@@ -22,23 +21,34 @@ class Player(object):
     def __init__(self, green, red):
         self.green = green
         self.red = red
-        self.connect()
+        self.mpdClient = None
+        self.__ensureConnected()
 
-    def connect(self):
-        connected = False
-        while connected is False:
+    def __ensureConnected(self):
+        while self.__isConnected() is False:
             try:
+                print("Connecting to MPD ...")
                 self.mpdClient = MPDClient()
                 self.mpdClient.connect(
                     host=self.HOST, port=self.PORT)
-                connected = True
+                print("Connected. ")
             except (ConnectionError, ConnectionRefusedError):
                 print("Could not connect to MPD. Retrying ...")
                 self.red.flash(.2, 1)
                 sleep(.5)
 
+    def __isConnected(self):
+        if self.mpdClient is None:
+            return False
+        try:
+            self.mpdClient.ping()
+        except ConnectionError:
+            return False
+        return True
+
     @property
     def state(self):
+        self.__ensureConnected()
         state = self.mpdClient.status()["state"]
         if state == "pause":
             return self.PAUSE
@@ -49,19 +59,22 @@ class Player(object):
         return self.UNKNOWN
 
     def play(self):
+        self.__ensureConnected()
         while self.state is not self.PLAY:
             self.mpdClient.play()
             sleep(.1)
         self.green.on()
 
     def pause(self):
+        self.__ensureConnected()
         self.mpdClient.pause()
         self.green.off()
 
     def track_back(self):
+        self.__ensureConnected()
         self.mpdClient.previous()
         self.green.flash(.2, 3,
-                       turnOn=True if self.state is self.PLAY else False)
+                         turnOn=True if self.state is self.PLAY else False)
 
 
 class ButtonListener(Listener):
