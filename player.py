@@ -42,7 +42,7 @@ class Player(object):
             return False
         try:
             self.mpdClient.ping()
-        except ConnectionError:
+        except (ConnectionError, BrokenPipeError):
             return False
         return True
 
