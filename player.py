@@ -2,7 +2,9 @@
 
 import sys
 import signal
+import os
 from time import sleep
+from datetime import datetime
 
 from mpd import MPDClient, ConnectionError
 
@@ -77,7 +79,7 @@ class Player(object):
                          turnOn=True if self.state is self.PLAY else False)
 
 
-class ButtonListener(Listener):
+class PlayerListener(Listener):
 
     HOLD_PERIOD = 2  # seconds
 
@@ -97,11 +99,41 @@ class ButtonListener(Listener):
                 self.player.play()
 
     def hold(self, diff, value):
-        if value is True and \
-                diff >= self.HOLD_PERIOD and \
-                self.reset is True:
+        if value and diff >= self.HOLD_PERIOD and self.reset:
             self.reset = False
             self.player.track_back()
+
+
+class SystemShutdownListener(Listener):
+
+    DBL_CLICK_PERIOD = .7  # seconds
+
+    def __init__(self, led):
+        super().__init__()
+        self.led = led
+        self.lastRTrig = None
+        self.clickCnt = 1
+
+    def r_trig(self, diff):
+        currentTime = datetime.now()
+        if self.lastRTrig is not None:
+            diff = (currentTime - self.lastRTrig).total_seconds()
+            if diff < SystemShutdownListener.DBL_CLICK_PERIOD:
+                self.clickCnt += 1
+                if self.clickCnt > 2:
+                    self.led.flash(.2, 3, turnOn=True)
+                    print("Shutting system down")
+                    os.system("systemctl poweroff")
+                    self.clickCnt = 0
+            else:
+                self.clickCnt = 1
+        self.lastRTrig = currentTime
+
+    def f_trig(self, diff):
+        pass
+
+    def hold(self, diff, value):
+        pass
 
 
 shutdown = False
@@ -117,10 +149,13 @@ def main():
     red = Led(23)
 
     player = Player(green, red)
-    buttonListener = ButtonListener(player)
+    playerListener = PlayerListener(player)
+
+    shutdownListener = SystemShutdownListener(red)
 
     button = Button(io, 24)
-    button.addButtonListener(buttonListener)
+    button.addButtonListener(playerListener)
+    button.addButtonListener(shutdownListener)
 
     print("System initialized. Playing ...")
     player.play()
